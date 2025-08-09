@@ -1,0 +1,17 @@
+[package]
+name = "wlwgpu"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+eyre = "0.6.12"
+
+raw-window-handle = "0.6.0"
+
+smithay-client-toolkit = { git = "https://github.com/Smithay/client-toolkit" }
+wayland-client = "0.31.1"
+wayland-backend = { version = "0.3.0", features = ["client_system"] }
+
+tokio = { version = "1.47.1", features = ["full"] }
+vello = "0.5.0"
+tracing = "0.1.41"
