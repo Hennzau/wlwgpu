@@ -3,16 +3,18 @@ use std::ptr::NonNull;
 use raw_window_handle::{
     RawDisplayHandle, RawWindowHandle, WaylandDisplayHandle, WaylandWindowHandle,
 };
-use smithay_client_toolkit::shell::{
-    WaylandSurface,
-    wlr_layer::LayerSurface,
-    xdg::{
-        XdgSurface,
-        window::{Window, WindowDecorations},
+use smithay_client_toolkit::{
+    reexports::client::{Proxy, QueueHandle},
+    shell::{
+        WaylandSurface,
+        wlr_layer::LayerSurface,
+        xdg::{
+            XdgSurface,
+            window::{Window, WindowDecorations},
+        },
     },
 };
 use vello::wgpu::SurfaceTargetUnsafe;
-use wayland_client::Proxy;
 
 use crate::*;
 
@@ -22,6 +24,19 @@ pub(crate) enum WlSurfaceHandle {
 }
 
 impl WlSurfaceHandle {
+    pub(crate) fn request_redraw(&self, qh: &QueueHandle<Client>) {
+        match self {
+            WlSurfaceHandle::Layer(layer) => {
+                layer.wl_surface().frame(qh, layer.wl_surface().clone());
+                layer.wl_surface().commit();
+            }
+            WlSurfaceHandle::Window(window) => {
+                window.wl_surface().frame(qh, window.wl_surface().clone());
+                window.wl_surface().commit();
+            }
+        }
+    }
+
     pub(crate) fn id(&self) -> SurfaceId {
         match self {
             WlSurfaceHandle::Layer(layer) => SurfaceId(layer.wl_surface().id().into()),

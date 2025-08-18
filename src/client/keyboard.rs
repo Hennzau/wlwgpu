@@ -3,12 +3,11 @@ use crate::*;
 use smithay_client_toolkit::{
     delegate_keyboard,
     reexports::client::{
-        Connection, QueueHandle,
+        Connection, Proxy, QueueHandle,
         protocol::{wl_keyboard::WlKeyboard, wl_surface::WlSurface},
     },
     seat::keyboard::{KeyEvent, KeyboardHandler, Keysym, Modifiers, RawModifiers},
 };
-use wayland_client::Proxy;
 
 delegate_keyboard!(Client);
 
@@ -17,12 +16,13 @@ impl KeyboardHandler for Client {
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
-        _keyboard: &wayland_client::protocol::wl_keyboard::WlKeyboard,
+        _keyboard: &WlKeyboard,
         surface: &WlSurface,
         _serial: u32,
         _raw: &[u32],
         _keysyms: &[Keysym],
     ) {
+        self.handle(Some(surface.id().into()), EventKind::KeyboardEntered);
     }
 
     fn leave(
@@ -33,6 +33,7 @@ impl KeyboardHandler for Client {
         surface: &WlSurface,
         _: u32,
     ) {
+        self.handle(Some(surface.id().into()), EventKind::KeyboardLeaved);
     }
 
     fn press_key(
@@ -43,16 +44,12 @@ impl KeyboardHandler for Client {
         _: u32,
         event: KeyEvent,
     ) {
-    }
-
-    fn repeat_key(
-        &mut self,
-        _conn: &Connection,
-        _qh: &QueueHandle<Self>,
-        _keyboard: &WlKeyboard,
-        _serial: u32,
-        event: KeyEvent,
-    ) {
+        self.handle(
+            None,
+            EventKind::KeyPressed {
+                key: event.raw_code,
+            },
+        );
     }
 
     fn release_key(
@@ -62,6 +59,22 @@ impl KeyboardHandler for Client {
         _: &WlKeyboard,
         _: u32,
         event: KeyEvent,
+    ) {
+        self.handle(
+            None,
+            EventKind::KeyReleased {
+                key: event.raw_code,
+            },
+        );
+    }
+
+    fn repeat_key(
+        &mut self,
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+        _keyboard: &WlKeyboard,
+        _serial: u32,
+        _event: KeyEvent,
     ) {
     }
 
@@ -75,5 +88,16 @@ impl KeyboardHandler for Client {
         _raw_modifiers: RawModifiers,
         _layout: u32,
     ) {
+        self.handle(
+            None,
+            EventKind::KeyModifiersChanged {
+                ctrl: modifiers.ctrl,
+                alt: modifiers.alt,
+                shift: modifiers.shift,
+                caps_lock: modifiers.caps_lock,
+                logo: modifiers.logo,
+                num_lock: modifiers.num_lock,
+            },
+        );
     }
 }

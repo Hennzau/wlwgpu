@@ -1,72 +1,53 @@
 use wlwgpu::*;
 
-#[tokio::main]
-async fn main() -> Result<()> {
-    let (mut wlwgpu, mut stream) = wlwgpu().await?;
+fn main() -> Result<()> {
+    let mut wlwgpu = wlwgpu()?;
 
-    let surface = SurfaceBuilder::default()
-        .window(true)
-        .build(&mut wlwgpu)
-        .await?;
+    pollster::block_on(SurfaceBuilder::default().window(true).build(&mut wlwgpu))?;
 
-    let handle_event = async |wlwgpu: &mut WlWgpu, event: Event| -> Result<bool> {
+    let mut scene = Scene::new();
+    let mut x = 0.0;
+
+    wlwgpu.run(move |shell, event| {
         let id = event.id;
         let kind = event.kind;
 
         match kind {
             EventKind::Close => {
                 if let Some(id) = id {
-                    wlwgpu.destroy_surface(&id);
+                    shell.destroy_surface(&id);
                 }
 
-                if wlwgpu.surfaces() == 0 {
-                    return Ok(true);
+                if shell.surfaces() < 1 {
+                    shell.stop();
                 }
             }
             EventKind::Configure { width, height } => {
                 if let Some(id) = id {
-                    wlwgpu.resize_surface(&id, width, height);
+                    shell.resize_surface(&id, width, height);
                 }
             }
-        }
+            EventKind::Draw => {
+                if let Some(id) = id {
+                    scene.clear();
 
-        Ok(false)
-    };
+                    let (width, height) = shell.size(&id).unwrap();
 
-    let mut scene = Scene::new();
+                    scene.fill(width, height, Color::WHITE);
+                    scene.add_circle(x, (height / 2) as f64, height as f64 / 7.0, Color::BLACK);
 
-    let mut x = 0.0;
+                    if let Err(e) = shell.render(&id, &scene) {
+                        println!("Error: {}", e);
+                    }
 
-    loop {
-        tokio::select! {
-            Ok(event) = stream.next() => {
-                let exit = handle_event(&mut wlwgpu, event).await?;
+                    x += 1000.0 * 6.0 / 1000.0;
 
-                if exit {
-                    println!("No more surfaces, exiting...");
-                    break;
+                    shell.request_redraw(&id);
                 }
             }
-            _ = tokio::time::sleep(std::time::Duration::from_millis(16)) => {
-                scene.clear();
-
-                let (width, height) = wlwgpu.size(&surface)?;
-                scene.fill(width, height, Color::new([1.0, 1.0, 1.0, 1.0]));
-
-                let y = height as f64 / 2.0;
-
-                scene.add_circle(x, y, 100.0, Color::new([0.9529, 0.5451, 0.6588, 1.]));
-
-                wlwgpu.render(&surface, &scene)?;
-
-                x += 1000.0 * 16.0 / 1000.0;
-            }
-            _ = tokio::signal::ctrl_c() => {
-                println!("Received Ctrl+C, exiting...");
-                break;
-            }
+            _ => {}
         }
-    }
 
-    Ok(())
+        Ok(())
+    })
 }

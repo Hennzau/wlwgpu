@@ -109,9 +109,12 @@ impl Wgpu {
         );
 
         device.queue.submit([encoder.finish()]);
-
         surface_texture.present();
 
         Ok(())
+    }
+
+    pub fn surfaces(&self) -> usize {
+        self.surfaces.len()
     }
 }

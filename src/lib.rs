@@ -1,16 +1,21 @@
+use smithay_client_toolkit::reexports::client::EventQueue;
+
 pub use eyre::{Report, Result};
 
 mod event;
 pub use event::*;
 
-mod stream;
-pub use stream::*;
-
 mod surface;
 pub use surface::*;
 
+mod event_loop;
+pub(crate) use event_loop::*;
+
 mod client;
 pub(crate) use client::*;
+
+mod shell;
+pub use shell::*;
 
 mod wgpu;
 pub use wgpu::*;
@@ -22,37 +27,42 @@ mod scene;
 pub use scene::*;
 
 pub struct WlWgpu {
-    pub(crate) wl: Wl,
-    pub(crate) wgpu: Wgpu,
+    pub(crate) event_queue: EventQueue<Client>,
+    pub(crate) shell: Shell,
 }
 
 impl WlWgpu {
-    pub fn destroy_surface(&mut self, id: &SurfaceId) {
-        self.wgpu.destroy_surface(id);
-    }
+    pub fn run(
+        mut self,
+        event_loop: impl FnMut(&mut Shell, Event) -> Result<()> + 'static,
+    ) -> Result<()> {
+        let mut client = Client::new(self.shell, event_loop.event_loop());
 
-    pub fn resize_surface(&mut self, id: &SurfaceId, width: u32, height: u32) {
-        self.wgpu.resize_surface(id, width, height);
-    }
+        loop {
+            if !client.shell.running {
+                break;
+            }
 
-    pub fn render(&mut self, id: &SurfaceId, scene: &Scene) -> Result<()> {
-        self.wgpu.render(id, scene)
-    }
+            if let Err(e) = self.event_queue.blocking_dispatch(&mut client) {
+                println!("Error {}", e);
+            }
+        }
 
-    pub fn surfaces(&self) -> usize {
-        self.wgpu.surfaces.len()
-    }
-
-    pub fn size(&self, id: &SurfaceId) -> Result<(u32, u32)> {
-        self.wgpu.size(id)
+        Ok(())
     }
 }
 
-pub async fn wlwgpu() -> Result<(WlWgpu, Stream)> {
+pub fn wlwgpu() -> Result<WlWgpu> {
     let wgpu = Wgpu::new();
-    let (wl, stream) = Wl::new()?;
+    let (wl, event_queue) = Wl::new()?;
 
-    let wlwgpu = WlWgpu { wl, wgpu };
+    let shell = Shell {
+        wl,
+        wgpu,
+        running: true,
+    };
 
-    Ok((wlwgpu, stream))
+    let wlwgpu = WlWgpu { event_queue, shell };
+
+    Ok(wlwgpu)
 }

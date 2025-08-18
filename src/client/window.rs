@@ -1,5 +1,6 @@
 use smithay_client_toolkit::{
     delegate_xdg_shell, delegate_xdg_window,
+    reexports::client::{Connection, Proxy, QueueHandle},
     shell::{
         WaylandSurface,
         xdg::{
@@ -8,7 +9,6 @@ use smithay_client_toolkit::{
         },
     },
 };
-use wayland_client::{Connection, Proxy, QueueHandle};
 
 use crate::*;
 
@@ -17,7 +17,7 @@ delegate_xdg_window!(Client);
 
 impl WindowHandler for Client {
     fn request_close(&mut self, _: &Connection, _: &QueueHandle<Self>, window: &Window) {
-        self.send(Some(window.wl_surface().id().into()), EventKind::Close);
+        self.handle(Some(window.wl_surface().id().into()), EventKind::Close);
     }
 
     fn configure(
@@ -39,9 +39,11 @@ impl WindowHandler for Client {
 
         window.commit();
 
-        self.send(
+        self.handle(
             Some(window.wl_surface().id().into()),
             EventKind::Configure { width, height },
         );
+
+        self.handle(Some(window.wl_surface().id().into()), EventKind::Draw);
     }
 }

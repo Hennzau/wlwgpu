@@ -1,12 +1,11 @@
 use smithay_client_toolkit::{
     delegate_registry,
     output::OutputState,
+    reexports::client::protocol::{wl_keyboard::WlKeyboard, wl_pointer::WlPointer},
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     seat::SeatState,
 };
-use tokio::sync::mpsc::{Sender, channel};
-use wayland_client::protocol::{wl_keyboard::WlKeyboard, wl_pointer::WlPointer};
 
 use crate::*;
 
@@ -19,7 +18,9 @@ mod seat;
 mod window;
 
 pub(crate) struct Client {
-    pub(crate) tx: Sender<Event>,
+    pub(crate) shell: Shell,
+
+    pub(crate) event_loop: EventLoop,
 
     pub(crate) keyboard: Option<WlKeyboard>,
     pub(crate) pointer: Option<WlPointer>,
@@ -30,39 +31,36 @@ pub(crate) struct Client {
 }
 
 impl Client {
-    pub(crate) fn new(wl: &Wl) -> (Self, Stream) {
-        let registry_state = RegistryState::new(&wl.globals);
-        let seat_state = SeatState::new(&wl.globals, &wl.qh);
-        let output_state = OutputState::new(&wl.globals, &wl.qh);
+    pub(crate) fn new(shell: Shell, event_loop: EventLoop) -> Self {
+        let registry_state = RegistryState::new(&shell.wl.globals);
+        let seat_state = SeatState::new(&shell.wl.globals, &shell.wl.qh);
+        let output_state = OutputState::new(&shell.wl.globals, &shell.wl.qh);
 
         let (keyboard, pointer) = (None, None);
 
-        let (tx, rx) = channel(128);
-        let stream = Stream::new(rx);
+        Self {
+            output_state,
+            seat_state,
+            registry_state,
 
-        (
-            Self {
-                output_state,
-                seat_state,
-                registry_state,
+            pointer,
+            keyboard,
 
-                pointer,
-                keyboard,
-
-                tx,
-            },
-            stream,
-        )
+            event_loop,
+            shell,
+        }
     }
 
-    pub(crate) fn send(&self, id: Option<SurfaceId>, kind: EventKind) {
-        let tx = self.tx.clone();
+    pub(crate) fn handle(&mut self, id: Option<SurfaceId>, kind: EventKind) {
+        if let Some(id) = &id {
+            if !self.shell.exists(id) {
+                return;
+            }
+        }
 
-        tokio::task::spawn(async move {
-            tx.send(Event { id, kind }).await.unwrap_or_else(|e| {
-                tracing::error!("Error {}", e);
-            });
-        });
+        if let Err(e) = self.event_loop.call(&mut self.shell, Event { id, kind }) {
+            println!("Error {}", e);
+        }
     }
 }
 

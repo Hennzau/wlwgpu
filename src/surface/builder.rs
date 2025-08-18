@@ -84,7 +84,7 @@ impl SurfaceBuilder {
     }
 
     pub async fn build(self, wlwgpu: &mut WlWgpu) -> Result<SurfaceId> {
-        let wl = &wlwgpu.wl;
+        let wl = &wlwgpu.shell.wl;
 
         let wayland_surface = match self.window {
             true => WlSurfaceHandle::window(wl, self.title, self.width, self.height),
@@ -100,7 +100,7 @@ impl SurfaceBuilder {
             ),
         };
 
-        let wgpu = &mut wlwgpu.wgpu;
+        let wgpu = &mut wlwgpu.shell.wgpu;
 
         let wgpu_surface = unsafe {
             wgpu.ctx

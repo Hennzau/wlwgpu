@@ -4,7 +4,7 @@ use smithay_client_toolkit::{
     compositor::CompositorHandler,
     delegate_compositor,
     reexports::client::{
-        Connection, QueueHandle,
+        Connection, Proxy, QueueHandle,
         protocol::{
             wl_output::{Transform, WlOutput},
             wl_surface::WlSurface,
@@ -40,6 +40,7 @@ impl CompositorHandler for Client {
         surface: &WlSurface,
         _time: u32,
     ) {
+        self.handle(Some(surface.id().into()), EventKind::Draw);
     }
 
     fn surface_enter(
