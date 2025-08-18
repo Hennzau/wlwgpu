@@ -41,7 +41,7 @@ impl WindowHandler for Client {
 
         self.handle(
             Some(window.wl_surface().id().into()),
-            EventKind::Configure { width, height },
+            EventKind::Resize { width, height },
         );
 
         self.handle(Some(window.wl_surface().id().into()), EventKind::Draw);

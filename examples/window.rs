@@ -22,7 +22,7 @@ fn main() -> Result<()> {
                     shell.stop();
                 }
             }
-            EventKind::Configure { width, height } => {
+            EventKind::Resize { width, height } => {
                 if let Some(id) = id {
                     shell.resize_surface(&id, width, height);
                 }

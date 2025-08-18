@@ -1,2 +1,3 @@
 # wlwgpu
-wlwgpu is a wayland specific wgpu framework supporting wlr_layer_shell and xdg_shell. Powered by the vello renderer
+
+This is an experimental repository, used to build another framework.

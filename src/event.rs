@@ -3,7 +3,7 @@ use crate::*;
 #[derive(Debug, Clone, PartialEq)]
 pub enum EventKind {
     Close,
-    Configure {
+    Resize {
         width: u32,
         height: u32,
     },

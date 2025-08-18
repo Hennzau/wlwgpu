@@ -29,7 +29,7 @@ impl LayerShellHandler for Client {
 
         self.handle(
             Some(layer.wl_surface().id().into()),
-            EventKind::Configure {
+            EventKind::Resize {
                 width: configure.new_size.0,
                 height: configure.new_size.1,
             },
